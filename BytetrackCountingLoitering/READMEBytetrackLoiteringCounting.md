@@ -74,10 +74,24 @@ jupyter notebook
 
 4. Kết quả: Ảnh được xử lý với bounding boxes, track IDs, class labels, và count.
 
-### Chạy Trên Video Real-Time (Tùy Chọn)
-- Thay thế `cv2.imread()` bằng `cv2.VideoCapture(0)` cho webcam.
-- Thêm loop while để xử lý từng frame.
-- Tối ưu FPS cho edge devices.
+### Chạy Hệ Thống Bằng Công Cụ Dòng Lệnh Trên Video (Tool Mới)
+Hệ thống hiện đã hỗ trợ chạy trực tiếp trên file video hoặc camera bằng lệnh `run_video.py` với nhiều kịch bản linh hoạt:
+
+```bash
+# 1. Chế độ Tracking (Chỉ nhận diện và theo dõi yolo)
+python3 BytetrackCountingLoitering/run_video.py --video output.mp4 --mode tracking
+
+# 2. Chế độ Geofence (Vẽ đa giác và đếm số người đi ngang vùng)
+python3 BytetrackCountingLoitering/run_video.py --video output.mp4 --mode geofence
+
+# 3. Chế độ Loitering (Đầy đủ chức năng + Bắt hành vi lảng vảng - Default)
+python3 BytetrackCountingLoitering/run_video.py --video output.mp4 --mode loitering
+```
+
+**Các tham số bổ trợ hữu ích:**
+- `--video 0`: Nếu bạn muốn chạy bằng Webcam thay vì truyền đường dẫn file `output.mp4`.
+- `--output ket_qua.mp4`: Nếu bạn muốn hệ thống lưu kết quả xử lý thành file video trong khi chạy.
+- `--draw-roi`: Cờ chế độ **Interactive Polygon**. Hệ thống sẽ dừng ở frame đầu tiên và cho phép bạn tự dùng chuột khoanh vùng giám sát (Geofence) trên video mà không cần sửa file `config.py`. Cực kỳ hữu dụng khi thay đổi camera!
 
 ## Cấu Trúc Dự Án
 ```

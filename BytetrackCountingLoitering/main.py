@@ -6,15 +6,15 @@ import time
 
 from config import polygon, CONF_THRESHOLD
 from detection import model, detect
-from tracking import tracker
+
 from utils import count_in_polygon
 from loitering import check_loitering, loiter_dict
 
-def process_frame(frame, frame_id, loiter_dict):
+def process_frame(frame, frame_id, loiter_dict, mode="loitering", dynamic_polygon=None):
+    current_polygon = dynamic_polygon if dynamic_polygon is not None else polygon
     # Run YOLO tracking
     yolo_output = model.track(frame, persist=True, classes=[0, 1, 3], conf=CONF_THRESHOLD, verbose=False)
 
-    # Get tracks from ultralytics, including class_ids
     tracks = []
     if yolo_output[0].boxes.id is not None:
         boxes = yolo_output[0].boxes.xyxy.cpu().numpy()
@@ -26,15 +26,18 @@ def process_frame(frame, frame_id, loiter_dict):
             class_id = classes[i]
             tracks.append([x1, y1, x2, y2, track_id, class_id])  # Add class_id to track
 
-    # Draw polygon for debug
-    cv2.polylines(frame, [polygon], True, (255,0,0), 2)
-
-    # Count only persons (class 0) in polygon
-    count = count_in_polygon(tracks, polygon)
+    # Draw polygon for debug and count
+    count = 0
+    if mode in ["geofence", "loitering"] and current_polygon is not None:
+        cv2.polylines(frame, [current_polygon], True, (255,0,0), 2)
+        # Count only persons (class 0) in polygon
+        count = count_in_polygon(tracks, current_polygon)
 
     # Loitering
     current_time = time.time()
-    alerts = check_loitering(tracks, polygon, loiter_dict, current_time)
+    alerts = []
+    if mode == "loitering" and current_polygon is not None:
+        alerts = check_loitering(tracks, current_polygon, loiter_dict, current_time)
 
     # Draw tracks with color based on loitering
     for track in tracks:
@@ -44,9 +47,11 @@ def process_frame(frame, frame_id, loiter_dict):
         cv2.putText(frame, f"ID {track_id} C{class_id}", (int(x1),int(y1)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-    # Display count
-    cv2.putText(frame, f"Count: {count}", (10,30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    # Display count if applicable
+    if mode in ["geofence", "loitering"]:
+        # Đã đổi màu sang Vàng (B=0, G=255, R=255)
+        cv2.putText(frame, f"Count: {count}", (10,30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 3)
 
     return frame, count, alerts, len(tracks)
 

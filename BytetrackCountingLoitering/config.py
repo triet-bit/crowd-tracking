@@ -2,8 +2,8 @@
 import numpy as np
 
 CONF_THRESHOLD = 0.4
-THRESHOLD_TIME = 5  # seconds
-VELOCITY_THRESHOLD = 0.5  # pixels per frame, adjust based on FPS
+THRESHOLD_TIME = 2  
+VELOCITY_THRESHOLD = 3.0  
 
 # Polygon definition
 polygon = np.array([

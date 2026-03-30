@@ -13,7 +13,7 @@ class YoloOutput:
     class_ids: np.ndarray
     centers: List[Tuple[float, float]]
 
-model = YOLO(r"D:\Anomaly-Detection-in-Surveillance-Videos\yolov8s.pt")  # Use YOLOv8s for edge devices
+model = YOLO("yolov8s.pt")  # Use YOLOv8s for edge devices
 
 def detect(model, frame, frame_id):
     results = model(frame, classes=[0, 1, 3], conf=CONF_THRESHOLD, verbose=False)
