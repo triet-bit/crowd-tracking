@@ -63,6 +63,11 @@ def run_on_video(video_path, output_path=None, mode="loitering", draw_roi=False)
     frame_id = 0
     print("Đang xử lý video... Nhấn 'q' để thoát.")
     
+    # Initialize flow tracking
+    flow_dict = {}
+    enter_count = 0
+    exit_count = 0
+    
     # Lấy frame đầu tiên để vẽ vùng nếu draw_roi=True
     ret, first_frame = cap.read()
     if not ret:
@@ -77,7 +82,7 @@ def run_on_video(video_path, output_path=None, mode="loitering", draw_roi=False)
         else:
             print("Đã hủy bỏ hoặc chưa vẽ đủ 3 điểm, sử dụng polygon mặc định.")
             
-    processed_frame, count, alerts, total_tracks = process_frame(first_frame, frame_id, loiter_dict, mode=mode, dynamic_polygon=dynamic_polygon)
+    processed_frame, count, alerts, total_tracks, enter_count, exit_count = process_frame(first_frame, frame_id, loiter_dict, mode=mode, dynamic_polygon=dynamic_polygon, flow_dict=flow_dict, enter_count=enter_count, exit_count=exit_count)
     cv2.putText(processed_frame, f"FPS: {fps}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
     cv2.imshow("Crowd Tracking & Loitering Detection", processed_frame)
     if output_path: out.write(processed_frame)
@@ -89,7 +94,7 @@ def run_on_video(video_path, output_path=None, mode="loitering", draw_roi=False)
             print("Đã phát video xong hoặc không thể đọc frame.")
             break
             
-        processed_frame, count, alerts, total_tracks = process_frame(frame, frame_id, loiter_dict, mode=mode, dynamic_polygon=dynamic_polygon)
+        processed_frame, count, alerts, total_tracks, enter_count, exit_count = process_frame(frame, frame_id, loiter_dict, mode=mode, dynamic_polygon=dynamic_polygon, flow_dict=flow_dict, enter_count=enter_count, exit_count=exit_count)
         
         cv2.putText(processed_frame, f"FPS: {fps}", (10, 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
