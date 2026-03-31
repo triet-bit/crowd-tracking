@@ -16,6 +16,23 @@ def count_in_polygon(tracks, polygon):
             if inside_polygon((cx, cy), polygon):
                 count += 1
     return count
+
+def check_flow_crossing(track_id, current_center, previous_center, polygon):
+    """
+    Check if the trajectory from previous_center to current_center crosses the polygon boundary.
+    Returns 'enter' if entering, 'exit' if exiting, None otherwise.
+    """
+    if previous_center is None:
+        return None
+    
+    prev_inside = inside_polygon(previous_center, polygon)
+    curr_inside = inside_polygon(current_center, polygon)
+    
+    if not prev_inside and curr_inside:
+        return "enter"
+    elif prev_inside and not curr_inside:
+        return "exit"
+    return None
 def gather_images_into_vid(image_folder, output_video_path, fps=30): 
     image_paths = [os.path.join(image_folder, f) for f in os.listdir(image_folder)]
     image_paths.sort()
