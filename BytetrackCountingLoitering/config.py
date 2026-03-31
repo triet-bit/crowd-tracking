@@ -7,8 +7,8 @@ VELOCITY_THRESHOLD = 3.0
 
 # Polygon definition
 polygon = np.array([
-    (100,100),
-    (500,100),
-    (500,400),
-    (100,400)
-])
+    (50,50), #trái trên
+    (1500,50), #phải trên
+    (1500,900), #phải dưới
+    (50,900) ])  #trái dưới
+    
