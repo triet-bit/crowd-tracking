@@ -7,11 +7,12 @@ import time
 from config import polygon, CONF_THRESHOLD
 from detection import model, detect
 
-from utils import count_in_polygon
+from utils import count_in_polygon, check_flow_crossing
 from loitering import check_loitering, loiter_dict
 
-def process_frame(frame, frame_id, loiter_dict, mode="loitering", dynamic_polygon=None):
+def process_frame(frame, frame_id, loiter_dict, mode="loitering", dynamic_polygon=None, flow_dict=None, enter_count=0, exit_count=0):
     current_polygon = dynamic_polygon if dynamic_polygon is not None else polygon
+    
     # Run YOLO tracking
     yolo_output = model.track(frame, persist=True, classes=[0, 1, 3], conf=CONF_THRESHOLD, verbose=False)
 
@@ -33,6 +34,20 @@ def process_frame(frame, frame_id, loiter_dict, mode="loitering", dynamic_polygo
         # Count only persons (class 0) in polygon
         count = count_in_polygon(tracks, current_polygon)
 
+    # Flow counting
+    if flow_dict is not None and current_polygon is not None:
+        for track in tracks:
+            x1, y1, x2, y2, track_id, class_id = track
+            if class_id == 0:  # Only for persons
+                current_center = ((x1 + x2) / 2, (y1 + y2) / 2)
+                previous_center = flow_dict.get(track_id)
+                crossing = check_flow_crossing(track_id, current_center, previous_center, current_polygon)
+                if crossing == "enter":
+                    enter_count += 1
+                elif crossing == "exit":
+                    exit_count += 1
+                flow_dict[track_id] = current_center
+
     # Loitering
     current_time = time.time()
     alerts = []
@@ -52,8 +67,11 @@ def process_frame(frame, frame_id, loiter_dict, mode="loitering", dynamic_polygo
         # Đã đổi màu sang Vàng (B=0, G=255, R=255)
         cv2.putText(frame, f"Count: {count}", (10,30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 3)
+        if flow_dict is not None:
+            cv2.putText(frame, f"Enter: {enter_count} Exit: {exit_count}", (10,70),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 3)
 
-    return frame, count, alerts, len(tracks)
+    return frame, count, alerts, len(tracks), enter_count, exit_count
 
 # Example usage with image
 if __name__ == "__main__":
@@ -64,7 +82,7 @@ if __name__ == "__main__":
         print("Error: Image not found!")
     else:
         print("Image loaded successfully!")
-        processed_frame, count, alerts, total_tracks = process_frame(frame, 0, loiter_dict)
+        processed_frame, count, alerts, total_tracks, _, _ = process_frame(frame, 0, loiter_dict)
         plt.imshow(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB))
         plt.title("Processed Image with Detections, Tracks, and Count")
         plt.show()
