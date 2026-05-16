@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrowdTrack – Hệ thống giám sát đám đông</title>
+    <meta name="description" content="Bảng điều khiển giám sát đám đông thời gian thực sử dụng AI">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect width="28" height="28" rx="8" fill="#1a73e8"/>
+                <circle cx="14" cy="10" r="3.5" fill="white"/>
+                <circle cx="7" cy="18" r="2.5" fill="white" opacity="0.7"/>
+                <circle cx="14" cy="20" r="2.5" fill="white"/>
+                <circle cx="21" cy="18" r="2.5" fill="white" opacity="0.7"/>
+            </svg>
+            <span class="sidebar-brand">CrowdTrack</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" id="nav-dashboard">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </a>
+            <a href="#" class="nav-item" id="nav-cameras">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7L16 12L23 17V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                Cameras
+            </a>
+            <a href="#" class="nav-item" id="nav-alerts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Alerts
+                <span class="nav-badge" id="nav-alert-count">0</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="ws-status-pill" id="ws-pill">
+                <span class="ws-dot" id="ws-dot"></span>
+                <span id="ws-status-text">Offline</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div>
+                <h1 id="page-title">Dashboard</h1>
+                <p class="topbar-sub">Giám sát thời gian thực • <span id="current-time"></span></p>
+            </div>
+            <div class="topbar-actions">
+                <div class="camera-select-wrap">
+                    <label for="camera-id-input">Camera ID</label>
+                    <input type="text" id="camera-id-input" value="cam_001" placeholder="cam_001" autocomplete="off">
+                </div>
+                <button id="btn-start" class="btn btn-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                    Start
+                </button>
+                <button id="btn-stop" class="btn btn-ghost">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    Stop
+                </button>
+            </div>
+        </header>
+
+        <!-- =================== DASHBOARD VIEW =================== -->
+        <section id="view-dashboard" class="view active">
+
+            <!-- Live Video + Metrics Row -->
+            <div class="video-metrics-row">
+                <!-- Live Video Feed -->
+                <div class="card video-card">
+                    <div class="card-header">
+                        <h2 class="card-title">📹 Live Camera Feed</h2>
+                        <div class="video-toolbar">
+                            <button class="btn btn-ghost btn-sm" id="btn-draw-zone" title="Vẽ vùng giám sát">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                                Vẽ Zone
+                            </button>
+                            <button class="btn btn-ghost btn-sm" id="btn-clear-zone" title="Xóa vùng" style="display:none;">Xóa Zone</button>
+                            <button class="btn btn-primary btn-sm" id="btn-save-zone" title="Lưu zone" style="display:none;">Lưu Zone</button>
+                            <span class="card-badge live" id="stream-badge" style="display:none;">● Live</span>
+                        </div>
+                    </div>
+                    <div class="video-container" id="video-container">
+                        <img id="live-feed" src="" alt="Camera Feed" style="display:none;">
+                        <canvas id="zone-canvas"></canvas>
+                        <div class="video-placeholder" id="video-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#b0c4de" stroke-width="1.5"><path d="M23 7L16 12L23 17V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                            <p>Nhấn <strong>Start</strong> để bắt đầu stream</p>
+                            <p class="hint">Tạo camera ở tab Cameras → Nhập ID → Start</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metric Cards -->
+                <div class="metrics-col">
+                    <div class="metric-card" id="card-count">
+                        <div class="metric-icon blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div class="metric-body">
+                            <p class="metric-label">Đang có mặt</p>
+                            <div class="metric-value" id="metric-count">0</div>
+                        </div>
+                    </div>
+                    <div class="metric-card" id="card-tracks">
+                        <div class="metric-icon teal">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                        <div class="metric-body">
+                            <p class="metric-label">Tổng tracks</p>
+                            <div class="metric-value" id="metric-tracks">0</div>
+                        </div>
+                    </div>
+                    <div class="metric-card" id="card-enter">
+                        <div class="metric-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        </div>
+                        <div class="metric-body">
+                            <p class="metric-label">Vào</p>
+                            <div class="metric-value" id="metric-enter">0</div>
+                        </div>
+                    </div>
+                    <div class="metric-card" id="card-exit">
+                        <div class="metric-icon orange">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </div>
+                        <div class="metric-body">
+                            <p class="metric-label">Ra</p>
+                            <div class="metric-value" id="metric-exit">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart + Alerts Row -->
+            <div class="bottom-row">
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Mật độ người theo thời gian</h2>
+                        <span class="card-badge live">● Live</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="densityChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card alerts-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Cảnh báo gần đây</h2>
+                        <span class="badge-count" id="alert-badge">0</span>
+                    </div>
+                    <div class="alerts-list" id="alerts-container">
+                        <div class="empty-state">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#b0c4de" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            <p>Chưa có cảnh báo</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =================== CAMERAS VIEW =================== -->
+        <section id="view-cameras" class="view">
+            <div class="card full-card">
+                <div class="card-header">
+                    <h2 class="card-title">Quản lý Camera</h2>
+                    <button class="btn btn-primary btn-sm" id="btn-add-camera">+ Thêm camera</button>
+                </div>
+                <div id="camera-list" class="camera-list">
+                    <div class="empty-state"><p>Đang tải danh sách camera...</p></div>
+                </div>
+            </div>
+
+            <!-- Add Camera Form -->
+            <div class="card full-card" id="add-camera-form" style="display:none;">
+                <div class="card-header"><h2 class="card-title">Thêm Camera mới</h2></div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tên camera</label>
+                        <input type="text" id="new-cam-name" placeholder="VD: Cổng chính" />
+                    </div>
+                    <div class="form-group">
+                        <label>Loại nguồn</label>
+                        <select id="new-cam-type">
+                            <option value="mock">Mock (Demo)</option>
+                            <option value="rtsp">RTSP Stream</option>
+                            <option value="video_file">Video File</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>URL nguồn (nếu có)</label>
+                        <input type="text" id="new-cam-url" placeholder="rtsp://... hoặc /path/to/video.mp4" />
+                    </div>
+                    <div class="form-group">
+                        <label>Chế độ AI</label>
+                        <select id="new-cam-mode">
+                            <option value="loitering">Loitering (Tracking + Geofence + Lảng vảng)</option>
+                            <option value="geofence">Geofence (Tracking + Đếm vùng)</option>
+                            <option value="tracking">Tracking only (Chỉ theo dõi)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="btn-create-camera">Tạo Camera</button>
+                    <button class="btn btn-ghost" id="btn-cancel-camera">Hủy</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== ALERTS VIEW =================== -->
+        <section id="view-alerts" class="view">
+            <div class="card full-card">
+                <div class="card-header">
+                    <h2 class="card-title">Lịch sử cảnh báo</h2>
+                    <div class="filter-row">
+                        <button class="btn btn-ghost btn-sm" id="btn-test-telegram">Test Telegram</button>
+                        <button class="btn btn-ghost btn-sm" id="btn-test-hardware">Test Hardware</button>
+                    </div>
+                </div>
+                <div id="alert-history-list" class="alerts-list full">
+                    <div class="empty-state"><p>Đang tải...</p></div>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- end .main-content -->
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

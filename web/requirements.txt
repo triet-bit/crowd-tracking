@@ -1,0 +1,19 @@
+fastapi
+uvicorn[standard]
+websockets
+redis[asyncio]
+celery
+sqlalchemy
+pydantic
+pydantic-settings
+opencv-python
+numpy
+requests
+httpx
+python-multipart
+aiofiles
+python-dotenv
+# AI thật (uncomment nếu dùng AI_ENGINE=crowd_tracking):
+# ultralytics
+# supervision
+# shapely
