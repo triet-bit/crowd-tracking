@@ -142,11 +142,11 @@ def run_selectable_camera_demo(model, camera_index):
     cv2.destroyAllWindows()
 
 checkpoint_path = "./checkpoints/"
-checkpoint_name = "xinnguoihayvenoiday105.pth"
+checkpoint_name = "conlaichinoidaycodonrienganh300_210.pth"
 
 snapshot_download(
     repo_id="b1nswing/CSRNET_config_B", 
-    local_dir="./checkpoints"
+    local_dir=checkpoint_path
 )
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -157,19 +157,19 @@ model = CSRNet().to(device)
 checkpoint = torch.load(checkpoint_path+checkpoint_name, map_location=device, weights_only=True)
 model.load_state_dict(checkpoint['model_state_dict'])
 
-# target_video = "./shanghaitech/training/videos/01_002.avi" 
-# run_video_demo(model, target_video)
-cameras = find_available_cameras()
+target_video = "../output.mp4" 
+run_video_demo(model, target_video)
+# cameras = find_available_cameras()
     
-if not cameras:
-    print("No cameras detected on this system!")
-else:
-    print("\nAvailable Cameras found at indexes:", cameras)
-    try:
-        selected_cam = int(input(f"Enter the camera index you want to use {cameras}: "))
-        if selected_cam in cameras:
-            run_selectable_camera_demo(model, selected_cam)
-        else:
-            print("Invalid camera index selected.")
-    except ValueError:
-        print("Please enter a valid number.")
+# if not cameras:
+#     print("No cameras detected on this system!")
+# else:
+#     print("\nAvailable Cameras found at indexes:", cameras)
+#     try:
+#         selected_cam = int(input(f"Enter the camera index you want to use {cameras}: "))
+#         if selected_cam in cameras:
+#             run_selectable_camera_demo(model, selected_cam)
+#         else:
+#             print("Invalid camera index selected.")
+#     except ValueError:
+#         print("Please enter a valid number.")
