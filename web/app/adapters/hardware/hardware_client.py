@@ -42,7 +42,7 @@ class RealHardwareClient(BaseHardwareClient):
         camera_id = payload.get("camera_id", "unknown")
         severity = payload.get("severity", "medium")
         people_count = payload.get("people_count", 0)
-        msg = f"[{severity}] {people_count} Ps\n{camera_id}"
+        msg = f"[{severity}] {people_count} ppl\n{camera_id}"
         print("sending to hardware:"+msg)
         try:
             self.aio.send_data('led-command', 'ON')
