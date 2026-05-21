@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from web.app.core.celery_app import celery_app
+from web.app.core.redis import is_camera_running
 from web.app.adapters.notifier.telegram_notifier import create_notifier
 
 logger = logging.getLogger(__name__)
@@ -10,8 +11,12 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="web.app.tasks.telegram_tasks.send_telegram_alert")
 def send_telegram_alert(alert_id: str, payload: dict):
     """Gửi thông báo Telegram khi có alert."""
-    notifier = create_notifier()
     camera_id = payload.get("camera_id", "?")
+    if not is_camera_running(camera_id):
+        logger.info(f"[telegram_tasks] Skip Telegram for stopped camera={camera_id}")
+        return {"status": "skipped", "reason": "camera_stopped"}
+
+    notifier = create_notifier()
     alert_type = payload.get("alert_type", "alert")
     count = payload.get("people_count", 0)
     severity = payload.get("severity", "medium")

@@ -33,6 +33,22 @@ def get_camera_status(camera_id: str) -> dict | None:
     return json.loads(data) if data else None
 
 
+def is_camera_running(camera_id: str) -> bool:
+    status = get_camera_status(camera_id)
+    return status is not None and status.get("status") == "running"
+
+
+def set_camera_visual_mode(camera_id: str, visual_mode: str):
+    key = f"camera:{camera_id}:visual_mode"
+    redis_client.set(key, visual_mode)
+
+
+def get_camera_visual_mode(camera_id: str, default: str = "bytetrack") -> str:
+    key = f"camera:{camera_id}:visual_mode"
+    value = redis_client.get(key)
+    return value or default
+
+
 def check_alert_cooldown(camera_id: str, zone_id: str, alert_type: str) -> bool:
     key = f"alert:cooldown:{camera_id}:{zone_id}:{alert_type}"
     return bool(redis_client.exists(key))
@@ -59,3 +75,20 @@ def get_camera_frame(camera_id: str) -> bytes | None:
     """Lấy frame JPEG mới nhất từ Redis."""
     key = f"camera:{camera_id}:frame"
     return redis_binary.get(key)
+
+
+def clear_camera_runtime(camera_id: str):
+    """Xóa runtime state để camera dừng hẳn ngay lập tức."""
+    keys = [
+        f"camera:{camera_id}:latest_metrics",
+        f"camera:{camera_id}:frame",
+        f"camera:{camera_id}:visual_mode",
+    ]
+
+    cooldown_pattern = f"alert:cooldown:{camera_id}:*"
+    cooldown_keys = list(redis_client.scan_iter(match=cooldown_pattern))
+    if cooldown_keys:
+        keys.extend(cooldown_keys)
+
+    if keys:
+        redis_binary.delete(*keys)

@@ -16,7 +16,7 @@ class YoloOutput:
 model = YOLO("yolov8s.pt")  # Use YOLOv8s for edge devices
 
 def detect(model, frame, frame_id):
-    results = model(frame, classes=[0, 1, 3], conf=CONF_THRESHOLD, verbose=False)
+    results = model(frame, classes=[0], conf=CONF_THRESHOLD, verbose=False)
     boxes = results[0].boxes.xyxy.cpu().numpy()
     conf = results[0].boxes.conf.cpu().numpy()
     class_ids = results[0].boxes.cls.cpu().numpy()

@@ -4,7 +4,7 @@ import time
 import os
 import cv2
 from web.app.core.celery_app import celery_app
-from web.app.core.redis import set_alert_cooldown, publish_ws_event
+from web.app.core.redis import set_alert_cooldown, publish_ws_event, is_camera_running
 from web.app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,10 @@ def create_alert(payload: dict):
     camera_id = payload.get("camera_id", "unknown")
     zone_id = payload.get("zone_id", "default")
     alert_type = payload.get("alert_type", "threshold_exceeded")
+
+    if not is_camera_running(camera_id):
+        logger.info(f"[alert_tasks] Skip alert for stopped camera={camera_id}")
+        return {"status": "skipped", "reason": "camera_stopped"}
 
     logger.info(f"[alert_tasks] Creating alert: {alert_type} for camera={camera_id}")
 

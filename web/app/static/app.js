@@ -8,6 +8,7 @@ let alertCount = 0;
 let densityChart = null;
 let currentCameraId = 'cam_001';
 let currentView = 'dashboard';
+let currentVisualMode = 'bytetrack';
 
 // Zone drawing state
 let isDrawingZone = false;
@@ -55,6 +56,7 @@ const UI = {
     btnDrawZone:     $('btn-draw-zone'),
     btnClearZone:    $('btn-clear-zone'),
     btnSaveZone:     $('btn-save-zone'),
+    btnToggleVisual: $('btn-toggle-visual'),
 };
 
 // ---- Clock ----
@@ -124,6 +126,18 @@ function stopVideoStream() {
     UI.liveFeed.style.display = 'none';
     UI.videoPlaceholder.style.display = 'flex';
     UI.streamBadge.style.display = 'none';
+}
+
+function updateVisualModeButton() {
+    if (!UI.btnToggleVisual) return;
+    UI.btnToggleVisual.textContent = currentVisualMode === 'heatmap' ? 'Ve ByteTrack' : 'Bat Heatmap';
+}
+
+function resetMetrics() {
+    animateValue(UI.metricCount, 0);
+    animateValue(UI.metricTracks, 0);
+    animateValue(UI.metricEnter, 0);
+    animateValue(UI.metricExit, 0);
 }
 
 function resizeZoneCanvas() {
@@ -246,7 +260,7 @@ async function saveZone() {
             name: `Zone ${Date.now().toString(36)}`,
             polygon: polygon,
             max_people_threshold: 10,
-            loitering_time_threshold: 30,
+            loitering_time_threshold: 2,
         });
         console.log('Zone saved:', result);
         alert(`Zone đã lưu: ${result.id}`);
@@ -347,6 +361,32 @@ async function api(method, path, body) {
     return res.json();
 }
 
+async function loadVisualMode(cameraId) {
+    if (!cameraId) return;
+    try {
+        const data = await api('GET', `/api/cameras/${cameraId}/visual-mode`);
+        currentVisualMode = data.visual_mode || 'bytetrack';
+    } catch (_) {
+        currentVisualMode = 'bytetrack';
+    }
+    updateVisualModeButton();
+}
+
+async function toggleVisualMode() {
+    const camId = UI.cameraInput.value.trim();
+    if (!camId) return;
+
+    const nextMode = currentVisualMode === 'heatmap' ? 'bytetrack' : 'heatmap';
+    try {
+        const data = await api('POST', `/api/cameras/${camId}/visual-mode`, { visual_mode: nextMode });
+        currentVisualMode = data.visual_mode || nextMode;
+        updateVisualModeButton();
+    } catch (e) {
+        console.error('Toggle visual mode failed:', e);
+        alert('Khong doi duoc che do hien thi');
+    }
+}
+
 // ---- Load cameras ----
 async function loadCameras() {
     const list = $('camera-list');
@@ -417,12 +457,15 @@ async function selectAndStartCamera(camId) {
     UI.cameraInput.value = camId;
     currentCameraId = camId;
     switchView('dashboard');
+    await loadVisualMode(camId);
     await startCameraStream(camId);
 }
 
 async function startCameraStream(camId) {
     try {
         await api('POST', `/api/cameras/${camId}/start`);
+        currentVisualMode = 'bytetrack';
+        updateVisualModeButton();
         connectWebSocket(camId);
         startVideoStream(camId);
     } catch (e) { console.error('Start failed:', e); }
@@ -431,7 +474,18 @@ async function startCameraStream(camId) {
 async function stopCamera(camId) {
     try {
         await api('POST', `/api/cameras/${camId}/stop`);
-        if (camId === currentCameraId) stopVideoStream();
+        if (camId === currentCameraId) {
+            stopVideoStream();
+            resetMetrics();
+            setWsStatus(false);
+            currentVisualMode = 'bytetrack';
+            updateVisualModeButton();
+            if (ws) {
+                ws.onclose = null;
+                ws.close();
+                ws = null;
+            }
+        }
         setTimeout(loadCameras, 800);
     } catch (e) { console.error(e); }
 }
@@ -471,6 +525,12 @@ UI.btnStop.addEventListener('click', async () => {
     if (!camId) return;
     await stopCamera(camId);
 });
+
+if (UI.btnToggleVisual) {
+    UI.btnToggleVisual.addEventListener('click', async () => {
+        await toggleVisualMode();
+    });
+}
 
 // Zone drawing buttons
 UI.btnDrawZone.addEventListener('click', () => enableZoneDrawing());
@@ -523,4 +583,5 @@ window.addEventListener('resize', () => {
 
 // ---- Init ----
 initChart();
+updateVisualModeButton();
 connectWebSocket(currentCameraId);

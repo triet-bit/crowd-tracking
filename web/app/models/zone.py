@@ -11,6 +11,6 @@ class Zone(Base):
     name = Column(String, nullable=False)
     polygon_json = Column(String, nullable=True)
     max_people_threshold = Column(Integer, default=10)
-    loitering_time_threshold = Column(Integer, default=30)
+    loitering_time_threshold = Column(Integer, default=2)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())

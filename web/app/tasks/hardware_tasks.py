@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from web.app.core.celery_app import celery_app
+from web.app.core.redis import is_camera_running
 from web.app.adapters.hardware.hardware_client import create_hardware_client
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,11 @@ logger = logging.getLogger(__name__)
 @celery_app.task(name="web.app.tasks.hardware_tasks.send_hardware_command")
 def send_hardware_command(alert_id: str, payload: dict):
     """Gửi lệnh xuống phần cứng khi có alert."""
+    camera_id = payload.get("camera_id")
+    if camera_id and not is_camera_running(camera_id):
+        logger.info(f"[hardware_tasks] Skip hardware command for stopped camera={camera_id}")
+        return {"status": "skipped", "reason": "camera_stopped"}
+    
     hardware = create_hardware_client()
     command = {
         "target": "alarm_device_001",

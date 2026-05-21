@@ -11,12 +11,14 @@ from web.app.core.config import settings
 from web.app.core.redis import (
     save_camera_metrics, set_camera_status,
     get_camera_status, publish_ws_event, check_alert_cooldown,
-    save_camera_frame
+    save_camera_frame, clear_camera_runtime, get_camera_visual_mode
 )
 from web.app.adapters.camera.video_file_camera import create_camera_source
 from web.app.adapters.ai.factory import create_ai_engine
 
 logger = logging.getLogger(__name__)
+DEFAULT_LOITERING_TIME_THRESHOLD = 2
+LEGACY_WEB_DEFAULT_LOITERING_TIME_THRESHOLD = 30
 
 
 def _get_camera_config(camera_id: str) -> dict:
@@ -27,7 +29,12 @@ def _get_camera_config(camera_id: str) -> dict:
         from web.app.models.zone import Zone
         db = SessionLocal()
         cam = db.query(Camera).filter(Camera.id == camera_id).first()
-        zones = db.query(Zone).filter(Zone.camera_id == camera_id).all()
+        zones = (
+            db.query(Zone)
+            .filter(Zone.camera_id == camera_id)
+            .order_by(Zone.created_at.desc(), Zone.id.desc())
+            .all()
+        )
         db.close()
         if not cam:
             return {"id": camera_id, "source_type": "mock", "mode": "loitering"}
@@ -36,14 +43,37 @@ def _get_camera_config(camera_id: str) -> dict:
             "source_type": cam.source_type,
             "source_url": cam.source_url or "",
             "mode": cam.mode or "loitering",
+            "visual_mode": get_camera_visual_mode(cam.id),
         }
+        logger.info(
+            "[stream_tasks] Camera config loaded: camera=%s mode=%s visual_mode=%s",
+            cam.id,
+            config["mode"],
+            config["visual_mode"],
+        )
         # Lấy zone đầu tiên làm mặc định
         if zones:
             z = zones[0]
             config["zone_id"] = z.id
             config["polygon_json"] = z.polygon_json
             config["max_people_threshold"] = z.max_people_threshold or 10
-            config["loitering_time_threshold"] = z.loitering_time_threshold or 30
+            zone_loitering_threshold = z.loitering_time_threshold
+
+            # Keep backward-compatible behavior with the original pipeline.
+            # Older web defaults stored 30s in DB, which is too different from
+            # the pipeline default and makes loitering appear "broken".
+            if zone_loitering_threshold in (None, 0, LEGACY_WEB_DEFAULT_LOITERING_TIME_THRESHOLD):
+                zone_loitering_threshold = DEFAULT_LOITERING_TIME_THRESHOLD
+
+            config["loitering_time_threshold"] = zone_loitering_threshold
+            logger.info(
+                "[stream_tasks] Loaded zone for %s: zone_id=%s loitering_time_threshold=%s",
+                camera_id,
+                z.id,
+                config["loitering_time_threshold"],
+            )
+        else:
+            logger.warning("[stream_tasks] No zone configured for camera=%s", camera_id)
         return config
     except Exception as e:
         logger.error(f"[stream_tasks] Error getting camera config: {e}")
@@ -81,8 +111,8 @@ def process_camera_stream(self, camera_id: str):
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
 
-    camera_config = _get_camera_config(camera_id)
-    camera_source = create_camera_source(camera_config)
+    source_config = _get_camera_config(camera_id)
+    camera_source = create_camera_source(source_config)
     ai_engine = create_ai_engine(settings)
 
     runtime_state = {
@@ -104,12 +134,18 @@ def process_camera_stream(self, camera_id: str):
                 time.sleep(0.1)
                 continue
 
+            camera_config = _get_camera_config(camera_id)
+
             # AI xử lý frame
             result = ai_engine.process(
                 frame=frame,
                 camera_config=camera_config,
                 runtime_state=runtime_state,
             )
+
+            if not _camera_is_active(camera_id):
+                logger.info(f"[stream_tasks] Stop requested during processing for {camera_id}")
+                break
 
             # Lưu metrics vào Redis
             metrics = result.to_metrics_dict()
@@ -139,6 +175,12 @@ def process_camera_stream(self, camera_id: str):
             # Loitering alert
             loitering_alerts = [a for a in result.alerts if "loitering" in a]
             if loitering_alerts:
+                logger.info(
+                    "[stream_tasks] Loitering detected for camera=%s frame=%s alerts=%s",
+                    camera_id,
+                    result.frame_id,
+                    loitering_alerts,
+                )
                 if not check_alert_cooldown(camera_id, zone_id, "loitering"):
                     from web.app.tasks.alert_tasks import create_alert
                     create_alert.delay(result.to_loitering_payload(zone_id=zone_id))
@@ -161,6 +203,7 @@ def process_camera_stream(self, camera_id: str):
         logger.error(f"[stream_tasks] Error in stream loop for {camera_id}: {e}", exc_info=True)
     finally:
         camera_source.release()
+        clear_camera_runtime(camera_id)
         set_camera_status(camera_id, {
             "status": "stopped",
             "task_id": None,

@@ -1,7 +1,7 @@
 """Hardware adapters - gửi lệnh xuống phần cứng."""
 import httpx
 import logging
-
+import time
 logger = logging.getLogger(__name__)
 
 
@@ -30,24 +30,30 @@ class MockPublicHardwareClient(BaseHardwareClient):
 class RealHardwareClient(BaseHardwareClient):
     """Gửi lệnh xuống phần cứng thật (ESP32, Arduino...)."""
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, username: str, key: str):
         self.base_url = base_url.rstrip("/")
-
+        self.username = username
+        self.key = key
+        from Adafruit_IO import Client
+        self.aio = Client(self.username, self.key)
+        
     async def send_command(self, command: dict) -> dict:
-        cmd_type = command.get("command", "TURN_ON_ALARM")
-        endpoint_map = {
-            "TURN_ON_ALARM": "/alarm",
-            "LCD_DISPLAY": "/lcd",
-            "RED_LIGHT": "/red-light",
-        }
-        path = endpoint_map.get(cmd_type, "/command")
-        url = f"{self.base_url}{path}"
+        payload = command.get("payload", {})
+        camera_id = payload.get("camera_id", "unknown")
+        severity = payload.get("severity", "medium")
+        people_count = payload.get("people_count", 0)
+        msg = f"[{severity}] {people_count} Ps\n{camera_id}"
+        print("sending to hardware:"+msg)
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(url, json=command)
-                return {"status": "sent", "response_code": resp.status_code}
+            self.aio.send_data('led-command', 'ON')
+            self.aio.send_data('lcd-message', msg)
+            # Wait for 3 seconds
+            time.sleep(3)
+            self.aio.send_data('led-command', 'OFF')
+            self.aio.send_data('lcd-message', 'No warning')
+            return {"status": "sent", "response_code": 200}
         except Exception as e:
-            logger.error(f"[Hardware Real] Failed to send to {url}: {e}")
+            logger.error(f"[Hardware Real] Failed to send to hardware: {e}")
             return {"status": "failed", "error": str(e)}
 
 
@@ -58,5 +64,5 @@ def create_hardware_client(settings=None):
     if settings.HARDWARE_PROVIDER == "mock_public_api":
         return MockPublicHardwareClient(settings.MOCK_HARDWARE_URL)
     if settings.HARDWARE_PROVIDER == "real_hardware":
-        return RealHardwareClient(settings.REAL_HARDWARE_BASE_URL)
+        return RealHardwareClient(settings.REAL_HARDWARE_BASE_URL, settings.AIO_USERNAME, settings.AIO_KEY)
     raise ValueError(f"Unknown HARDWARE_PROVIDER: {settings.HARDWARE_PROVIDER}")

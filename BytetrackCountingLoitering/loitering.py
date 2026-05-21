@@ -6,7 +6,16 @@ from utils import inside_polygon
 
 loiter_dict = {}
 
-def check_loitering(tracks, polygon, loiter_dict, current_time):
+def check_loitering(
+    tracks,
+    polygon,
+    loiter_dict,
+    current_time,
+    threshold_time=None,
+    velocity_threshold=None,
+):
+    threshold_time = THRESHOLD_TIME if threshold_time is None else threshold_time
+    velocity_threshold = VELOCITY_THRESHOLD if velocity_threshold is None else velocity_threshold
     alerts = []
     for track in tracks:
         x1, y1, x2, y2, track_id, class_id = track
@@ -30,7 +39,7 @@ def check_loitering(tracks, polygon, loiter_dict, current_time):
                     avg_velocity = 0
 
                 duration = current_time - loiter_dict[track_id]['start_time']
-                if duration > THRESHOLD_TIME and avg_velocity < VELOCITY_THRESHOLD:  # Time + low velocity
+                if duration > threshold_time and avg_velocity < velocity_threshold:  # Time + low velocity
                     alerts.append(track_id)
         else:
             if track_id in loiter_dict:

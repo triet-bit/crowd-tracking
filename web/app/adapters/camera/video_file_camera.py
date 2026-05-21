@@ -1,4 +1,6 @@
 """Video file camera source - dùng file video MP4/AVI."""
+import platform
+
 import cv2
 from .base import BaseCameraSource
 
@@ -42,7 +44,14 @@ class OpenCVCameraSource(BaseCameraSource):
         self._cap = None
 
     def open(self) -> None:
-        self._cap = cv2.VideoCapture(self.device_index)
+        # On Windows, CAP_DSHOW is usually more stable for local webcams.
+        if platform.system() == "Windows":
+            self._cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
+        else:
+            self._cap = cv2.VideoCapture(self.device_index)
+
+        if self._cap is None or not self._cap.isOpened():
+            raise RuntimeError(f"Cannot open webcam device: {self.device_index}")
 
     def read(self):
         if self._cap is None:
