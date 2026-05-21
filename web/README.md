@@ -88,3 +88,27 @@ Dành cho việc debug hoặc phát triển thêm tính năng. Yêu cầu máy b
 *   `app/ws/`: Máy chủ WebSocket đẩy số liệu realtime.
 *   `app/adapters/`: Nơi kết nối Web với các module bên ngoài (Module AI lõi, Phần cứng IoT, Telegram). Thiết kế theo chuẩn Interface.
 *   `frontend/` & `app/static/`: Chứa file HTML, JavaScript và CSS.
+
+---
+
+## 📬 Telegram Log
+
+Hệ thống đã bổ sung lưu lịch sử gửi Telegram vào database để dễ theo dõi, kiểm tra lỗi và đối soát với alert.
+
+- Bảng mới: `telegram_logs`
+- Trường chính: `alert_id`, `camera_id`, `send_type`, `status`, `response_code`, `error`, `message_preview`, `created_at`
+- Khi Celery task gửi Telegram chạy xong, hệ thống sẽ:
+    - Lưu 1 record vào `telegram_logs` (kể cả `sent`, `failed`, `skipped`)
+    - Cập nhật `alerts.telegram_status` theo kết quả gửi
+
+API xem log:
+
+```http
+GET /api/telegram/logs?alert_id=<id>&camera_id=<id>&limit=50
+```
+
+API test Telegram (có sẵn từ trước):
+
+```http
+POST /api/telegram/test
+```

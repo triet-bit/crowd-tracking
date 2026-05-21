@@ -24,4 +24,5 @@ def create_tables():
     from web.app.models.zone import Zone
     from web.app.models.alert import Alert
     from web.app.models.count_stat import CountStat
+    from web.app.models.telegram_log import TelegramLog
     Base.metadata.create_all(bind=engine)

@@ -8,6 +8,7 @@ Dự án này triển khai hệ thống giám sát thời gian thực sử dụn
 - **Geofencing (Hàng rào ảo):** Đếm số lượng người thuộc khu vực địa lý (Polygon) linh hoạt.
 - **Phát hiện lảng vảng (Loitering):** Phát hiện người đứng quá lâu hoặc bám trụ tại một khu vực với tốc độ di chuyển cực thấp dựa vào thời gian định mức.
 - **Thiết kế mô-đun:** Dễ dàng bảo trì, phát triển và chạy riêng biệt từng chức năng qua cấu trúc lệnh trên Terminal.
+- **Telegram logging:** Lưu lịch sử gửi cảnh báo Telegram (sent/failed/skipped) để kiểm tra và truy vết.
 
 ## Yêu Cầu Hệ Thống
 - Python 3.8+
@@ -83,6 +84,7 @@ crowd-tracking/
 ## Ghi Chú Quan Trọng
 - **Cấu trúc `.gitignore`:** Đã chuẩn hóa việc ẩn đi các Virtual Environments (`venv/`, `crowd_env/`), thư mục `__pycache__`, các tập tin video đầu ra lớn (`*.mp4`, `*.avi`) và mô hình tracking dung lượng cao (`*.pt`) để dọn dẹp repo.
 - **Tuỳ chỉnh Vùng Giám Sát:** Bạn có thể tự do tinh chỉnh toạ độ đa giác, ngưỡng vận tốc lảng vảng, và thời gian cảnh báo trực tiếp trong `BytetrackCountingLoitering/config.py`.
+- **Web dashboard:** Chi tiết API và cấu hình phần Telegram log nằm trong thư mục `web/` (xem `web/README.md`).
 
 ## Kế Hoạch Phát Triển (To-do)
 - Gắn thêm API trả kết quả luồng stream về Frontend / Mobile App.

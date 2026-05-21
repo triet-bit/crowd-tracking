@@ -1,10 +1,50 @@
 """Telegram notification Celery task."""
 import asyncio
 import logging
+import uuid
+
 from web.app.core.celery_app import celery_app
 from web.app.adapters.notifier.telegram_notifier import create_notifier
 
 logger = logging.getLogger(__name__)
+
+
+def _save_telegram_log(alert_id: str, payload: dict, result: dict, send_type: str) -> None:
+    try:
+        from web.app.core.database import SessionLocal
+        from web.app.models.telegram_log import TelegramLog
+
+        db = SessionLocal()
+        log = TelegramLog(
+            id=str(uuid.uuid4())[:8],
+            alert_id=alert_id,
+            camera_id=payload.get("camera_id"),
+            send_type=send_type,
+            status=result.get("status", "failed"),
+            response_code=result.get("response_code"),
+            error=result.get("error"),
+            message_preview=(payload.get("message", "") or "")[:255],
+        )
+        db.add(log)
+        db.commit()
+        db.close()
+    except Exception as e:
+        logger.error(f"[telegram_tasks] Failed to save telegram log for alert {alert_id}: {e}")
+
+
+def _update_alert_telegram_status(alert_id: str, status: str) -> None:
+    try:
+        from web.app.core.database import SessionLocal
+        from web.app.models.alert import Alert
+
+        db = SessionLocal()
+        alert = db.query(Alert).filter(Alert.id == alert_id).first()
+        if alert:
+            alert.telegram_status = status
+            db.commit()
+        db.close()
+    except Exception as e:
+        logger.error(f"[telegram_tasks] Failed to update alert telegram_status for {alert_id}: {e}")
 
 
 @celery_app.task(name="web.app.tasks.telegram_tasks.send_telegram_alert")
@@ -35,6 +75,17 @@ def send_telegram_alert(alert_id: str, payload: dict):
 
     try:
         result = asyncio.run(_send())
+        send_type = "photo" if snapshot_path else "message"
+        status = result.get("status", "failed")
+        _save_telegram_log(alert_id, payload, result, send_type)
+        _update_alert_telegram_status(alert_id, status)
         logger.info(f"[telegram_tasks] Alert {alert_id} sent: {result}")
     except Exception as e:
+        _save_telegram_log(
+            alert_id,
+            payload,
+            {"status": "failed", "error": str(e), "response_code": None},
+            "photo" if snapshot_path else "message",
+        )
+        _update_alert_telegram_status(alert_id, "failed")
         logger.error(f"[telegram_tasks] Failed to send alert {alert_id}: {e}")
