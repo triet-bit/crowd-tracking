@@ -17,6 +17,3 @@ python-dotenv
 # ultralytics
 # supervision
 # shapely
-
-# hardware
-adafruit-io

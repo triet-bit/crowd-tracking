@@ -120,8 +120,8 @@ class CrowdTrackingAIEngine(BaseAIEngine):
 
         # Thêm alert nếu threshold_exceeded
         threshold = camera_config.get("max_people_threshold", 10)
-        if count > threshold:
-            alert_list.append(f"threshold_exceeded:{count}>{threshold}")
+        if count >= threshold:
+            alert_list.append(f"threshold_exceeded:{count}>={threshold}")
 
         return FrameResult(
             camera_id=camera_id,

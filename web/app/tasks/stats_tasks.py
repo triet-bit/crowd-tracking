@@ -16,6 +16,8 @@ def save_count_stat(payload: dict):
 
     try:
         from web.app.core.database import SessionLocal
+        from web.app.models.camera import Camera  # noqa: F401 - register FK target table
+        from web.app.models.zone import Zone  # noqa: F401 - register FK target table
         from web.app.models.count_stat import CountStat
         import uuid
         from datetime import datetime

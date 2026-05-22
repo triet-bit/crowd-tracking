@@ -259,7 +259,7 @@ async function saveZone() {
         const result = await api('POST', `/api/cameras/${camId}/zones`, {
             name: `Zone ${Date.now().toString(36)}`,
             polygon: polygon,
-            max_people_threshold: 10,
+            max_people_threshold: 2,
             loitering_time_threshold: 2,
         });
         console.log('Zone saved:', result);
