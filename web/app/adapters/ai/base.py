@@ -35,13 +35,13 @@ class FrameResult:
     def to_alert_payload(self, zone_id: str = "default", threshold: int = 10) -> dict:
         """Build alert payload nếu count vượt ngưỡng."""
         severity = "critical" if self.people_count > threshold * 2 else \
-                   "high" if self.people_count > threshold else "medium"
+                   "high" if self.people_count >= threshold else "medium"
         return {
             "camera_id": self.camera_id,
             "zone_id": zone_id,
             "alert_type": "threshold_exceeded",
             "severity": severity,
-            "message": f"People count exceeded threshold: {self.people_count} > {threshold}",
+            "message": f"People count reached threshold: {self.people_count} >= {threshold}",
             "people_count": self.people_count,
             "frame_id": self.frame_id,
         }

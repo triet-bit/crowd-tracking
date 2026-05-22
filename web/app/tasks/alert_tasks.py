@@ -57,6 +57,8 @@ def _insert_alert_to_db(payload: dict) -> str:
     """Lưu alert vào SQLite database."""
     try:
         from web.app.core.database import SessionLocal
+        from web.app.models.camera import Camera  # noqa: F401 - register FK target table
+        from web.app.models.zone import Zone  # noqa: F401 - register FK target table
         from web.app.models.alert import Alert
         import uuid
         db = SessionLocal()

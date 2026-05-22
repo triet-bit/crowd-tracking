@@ -190,7 +190,7 @@ def create_zone(camera_id: str, payload: dict, db: Session = Depends(get_db)):
         camera_id=camera_id,
         name=payload.get("name", "Zone 1"),
         polygon_json=json.dumps(polygon_data) if isinstance(polygon_data, list) else polygon_data,
-        max_people_threshold=payload.get("max_people_threshold", 10),
+        max_people_threshold=payload.get("max_people_threshold", 2),
         loitering_time_threshold=payload.get("loitering_time_threshold", 2),
     )
     db.add(zone)

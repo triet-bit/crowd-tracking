@@ -39,10 +39,15 @@ class RealHardwareClient(BaseHardwareClient):
         
     async def send_command(self, command: dict) -> dict:
         payload = command.get("payload", {})
-        camera_id = payload.get("camera_id", "unknown")
+        mode = payload.get("alert_type", "unknown")
         severity = payload.get("severity", "medium")
         people_count = payload.get("people_count", 0)
-        msg = f"[{severity}] {people_count} Ps\n{camera_id}"
+        if mode == "threshold_exceeded":
+            msg = f"Threshold:\n[{severity}] {people_count} ppl"
+        elif mode == "loitering":
+            msg = f"Loitering:\n[{severity}] {people_count} ppl"
+        else:
+            msg = f"Alert:\n[{severity}] {people_count} ppl" 
         print("sending to hardware:"+msg)
         try:
             self.aio.send_data('led-command', 'ON')

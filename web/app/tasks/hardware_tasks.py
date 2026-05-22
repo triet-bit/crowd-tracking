@@ -16,24 +16,21 @@ def send_hardware_command(alert_id: str, payload: dict):
         logger.info(f"[hardware_tasks] Skip hardware command for stopped camera={camera_id}")
         return {"status": "skipped", "reason": "camera_stopped"}
     
-    hardware = create_hardware_client()
-    command = {
-        "target": "alarm_device_001",
-        "command": "TURN_ON_ALARM",
-        "duration_seconds": 10,
-        "payload": {
-            "alert_id": alert_id,
-            "camera_id": payload.get("camera_id"),
-            "people_count": payload.get("people_count"),
-            "severity": payload.get("severity"),
-        }
-    }
-
-    async def _send():
-        return await hardware.send_command(command)
-
     try:
+        hardware = create_hardware_client()
+        command = {
+            "target": "alarm_device_001",
+            "command": "TURN_ON_ALARM",
+            "duration_seconds": 10,
+            "payload": payload
+        }
+        print(payload)
+        async def _send():
+            return await hardware.send_command(command)
+
         result = asyncio.run(_send())
         logger.info(f"[hardware_tasks] Alert {alert_id} command sent: {result}")
+        return result
     except Exception as e:
         logger.error(f"[hardware_tasks] Failed to send hardware command: {e}")
+        return {"status": "failed", "error": str(e)}

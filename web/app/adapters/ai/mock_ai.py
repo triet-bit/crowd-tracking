@@ -43,8 +43,8 @@ class MockAIEngine(BaseAIEngine):
         # Alerts nếu count vượt ngưỡng
         threshold = camera_config.get("max_people_threshold", 10)
         alerts = []
-        if people_count > threshold:
-            alerts.append(f"threshold_exceeded:{people_count}>{threshold}")
+        if people_count >= threshold:
+            alerts.append(f"threshold_exceeded:{people_count}>={threshold}")
 
         # Fake boxes
         h, w = processed_frame.shape[:2]

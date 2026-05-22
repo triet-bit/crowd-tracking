@@ -167,7 +167,7 @@ def process_camera_stream(self, camera_id: str):
             threshold = camera_config.get("max_people_threshold", 10)
             zone_id = camera_config.get("zone_id", "default")
 
-            if result.people_count > threshold:
+            if result.people_count >= threshold:
                 if not check_alert_cooldown(camera_id, zone_id, "threshold_exceeded"):
                     from web.app.tasks.alert_tasks import create_alert
                     create_alert.delay(result.to_alert_payload(zone_id=zone_id, threshold=threshold))
